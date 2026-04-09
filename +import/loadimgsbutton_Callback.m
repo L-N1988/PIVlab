@@ -1,4 +1,12 @@
 function loadimgsbutton_Callback(~,~,useGUI,path)
+if useGUI == 1 && (nargin < 4 || isempty(path))
+    stereomode = gui.retr('stereomode');
+    if ~isempty(stereomode) && stereomode == 1
+        import.stereo_loadimgsbutton_Callback();
+        return
+    end
+end
+
 if useGUI ==1
     gui.toolsavailable(0);drawnow
 end
@@ -35,35 +43,7 @@ catch
 end
 
 if useGUI ==1
-    if ~verLessThan('matlab','25')
-        if ispc==1
-            try
-                [path, multitiff]=gui.uipickfiles ('FilterSpec', pathname, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            catch
-                [path, multitiff]=gui.uipickfiles ('FilterSpec', pwd, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            end
-        else
-            try
-                [path, multitiff]=gui.uipickfiles ('FilterSpec', pathname, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            catch
-                [path, multitiff]=gui.uipickfiles ('FilterSpec', pwd, 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            end
-        end
-    else
-        if ispc==1
-            try
-                [path, multitiff]=gui.uipickfiles_pre_2025 ('FilterSpec', pathname, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            catch
-                [path, multitiff]=gui.uipickfiles_pre_2025 ('FilterSpec', pwd, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            end
-        else
-            try
-                [path, multitiff]=gui.uipickfiles_pre_2025 ('FilterSpec', pathname, 'REFilter', '\.bmp$|\.jpg$|\.png$|\.tif$|\.jpeg$|\.tiff$|\.b16$', 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            catch
-                [path, multitiff]=gui.uipickfiles_pre_2025 ('FilterSpec', pwd, 'numfiles', [1 inf], 'output', 'struct', 'prompt', 'Select images. Images from one set should have identical dimensions to avoid problems.');
-            end
-        end
-    end
+    [path, multitiff] = import.select_image_files(pathname, 'Select images. Images from one set should have identical dimensions to avoid problems.');
     gui.put('expected_image_size',[])
 end
 gui.toolsavailable(1)
@@ -423,6 +403,7 @@ if ~isequal(path,0)
             set (handles.amount_nans, 'BackgroundColor',[0.9 0.9 0.9])
             set (handles.amount_nans,'string','')
             set (handles.remove_imgs,'enable','on');
+            import.update_stereo_import_controls();
         else
             gui.displogo(0)
             gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Selection must contain at least two images ( = 1 pair of images)','modal');

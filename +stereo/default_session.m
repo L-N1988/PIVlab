@@ -11,6 +11,11 @@ session.inputs.view1_files = {};
 session.inputs.view2_files = {};
 session.inputs.pairs = struct('index', {}, 'view1', {}, 'view2', {});
 
+session.gui = struct();
+session.gui.active_view = 1;
+session.gui.pair_count = 0;
+session.gui.views = cell(1,2);
+
 session.calibration = struct();
 session.calibration.mono = cell(1, 2);
 session.calibration.stereo = [];

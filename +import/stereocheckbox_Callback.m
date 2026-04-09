@@ -11,6 +11,7 @@ if strcmpi(button,'Yes')
     else
         gui.put('stereo_session',[]);
     end
+    import.update_stereo_import_controls();
 else % omit changing the box value
     caller.Source.Value = stereomode;
 end

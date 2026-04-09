@@ -193,6 +193,7 @@ try
     elseif stereomode == 1
         stereo.init_gui_state();
     end
+    import.update_stereo_import_controls();
 catch
     disp('couldnt set stereo GUI elements')
 end

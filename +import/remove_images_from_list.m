@@ -1,4 +1,10 @@
 function remove_images_from_list (~,~,~)
+if gui.retr('stereomode') == 1
+	gui.custom_msgbox('warn',getappdata(0,'hgui'),'Stereo mode active', ...
+		'Removing images from only one stereo view is not supported yet. Re-import both camera views instead.','modal');
+	return
+end
+
 handles=gui.gethand;
 if gui.retr('video_selection_done') ~= 1
 	filepath=gui.retr ('filepath'); %full path and filename for analyses

@@ -281,6 +281,7 @@ elseif valid_session_file == 1
     elseif vars.stereomode == 1
         stereo.init_gui_state();
     end
+    import.update_stereo_import_controls();
     %reset zoom
     set(handles.panon,'Value',0);
     set(handles.zoomon,'Value',0);
