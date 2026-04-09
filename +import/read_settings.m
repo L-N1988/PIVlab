@@ -176,12 +176,23 @@ try
     handles.calib_columns.String=calib_columns;
     handles.calib_checkersize.String=calib_checkersize;
     handles.calib_markersize.String=calib_markersize;
+    if exist('calib_custom_plate_file','var')
+        gui.put('calib_custom_plate_file',calib_custom_plate_file);
+    else
+        gui.put('calib_custom_plate_file',[]);
+    end
+    if exist('calib_custom_plate_definition','var')
+        gui.put('calib_custom_plate_definition',calib_custom_plate_definition);
+    else
+        gui.put('calib_custom_plate_definition',[]);
+    end
     handles.calib_dolivedetect.Value=calib_dolivedetect;
     handles.calib_viewtype.Value=calib_viewtype;
     handles.calib_usecalibration.Value=calib_usecalibration;
 	handles.calib_use_tilted_model.Value=calib_use_tilted_model;
     handles.calib_userectification.Value=calib_userectification;
     handles.calib_upscale.Value=calib_upscale;
+    preproc.cam_boardtype_Callback();
 catch
     disp('couldnt set cam undistortion GUI elements')
 end

@@ -43,6 +43,35 @@ if filen ~=0
             gui.put('cam_K_opencv',         []);
             handles.calib_use_tilted_model.Value = 0;
         end
+        if isfield(data,'calib_boardtype')
+            handles.calib_boardtype.Value = data.calib_boardtype;
+        end
+        if isfield(data,'calib_origincolor')
+            handles.calib_origincolor.Value = data.calib_origincolor;
+        end
+        if isfield(data,'calib_rows')
+            handles.calib_rows.String = data.calib_rows;
+        end
+        if isfield(data,'calib_columns')
+            handles.calib_columns.String = data.calib_columns;
+        end
+        if isfield(data,'calib_checkersize')
+            handles.calib_checkersize.String = data.calib_checkersize;
+        end
+        if isfield(data,'calib_markersize')
+            handles.calib_markersize.String = data.calib_markersize;
+        end
+        if isfield(data,'calib_custom_plate_file')
+            gui.put('calib_custom_plate_file',data.calib_custom_plate_file);
+        else
+            gui.put('calib_custom_plate_file',[]);
+        end
+        if isfield(data,'calib_custom_plate_definition')
+            gui.put('calib_custom_plate_definition',data.calib_custom_plate_definition);
+        else
+            gui.put('calib_custom_plate_definition',[]);
+        end
+        preproc.cam_boardtype_Callback();
         if gui.retr('stereomode') == 1
             stereo.store_current_camera_state(current_cam_nr);
         end

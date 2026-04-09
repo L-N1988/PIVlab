@@ -265,12 +265,23 @@ elseif valid_session_file == 1
         handles.calib_columns.String=vars.calib_columns;
         handles.calib_checkersize.String=vars.calib_checkersize;
         handles.calib_markersize.String=vars.calib_markersize;
+        if isfield(vars,'calib_custom_plate_file')
+            gui.put('calib_custom_plate_file',vars.calib_custom_plate_file);
+        else
+            gui.put('calib_custom_plate_file',[]);
+        end
+        if isfield(vars,'calib_custom_plate_definition')
+            gui.put('calib_custom_plate_definition',vars.calib_custom_plate_definition);
+        else
+            gui.put('calib_custom_plate_definition',[]);
+        end
         handles.calib_dolivedetect.Value=vars.calib_dolivedetect;
         handles.calib_viewtype.Value=vars.calib_viewtype;
         handles.calib_usecalibration.Value=vars.calib_usecalibration;
 		handles.calib_use_tilted_model.Value=vars.calib_use_tilted_model;
         handles.calib_userectification.Value=vars.calib_userectification;
         handles.calib_upscale.Value=vars.calib_upscale;
+        preproc.cam_boardtype_Callback();
     catch
         disp('couldnt set cam undistortion GUI elements for load_session')
     end

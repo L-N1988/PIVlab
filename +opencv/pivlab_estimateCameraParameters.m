@@ -1,12 +1,15 @@
 function [cameraParams, imagesUsed, stats] = ...
 	pivlab_estimateCameraParameters(imagePoints, worldPoints, imageSize, varargin)
 
-if isdeployed %run this only in non-deployed version
-	useopencv=0;
+worldPointDim = size(worldPoints, 2);
+supportsPlanarOpenCv = worldPointDim == 2;
+hasOpenCvMex = exist('opencv.opencv_calibrate_basic', 'file') > 0;
+
+if isdeployed
+	useopencv = supportsPlanarOpenCv && hasOpenCvMex;
 else
-	useopencv=1;
+	useopencv = supportsPlanarOpenCv && hasOpenCvMex;
 end
-useopencv=1;
 
 % ---- Parse optional arguments from varargin
 % Supported optional args (any order):

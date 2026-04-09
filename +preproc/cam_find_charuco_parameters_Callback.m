@@ -2,6 +2,17 @@ function [outputArg1,outputArg2] = cam_find_charuco_parameters_Callback(~,~,~)
 %% first try to detect QR code. If not successful, try to detect charuco board itself. But this seems difficult and fails if not perfect image quality.
 warning off 'vision:calibrate:boardShouldBeAsymmetric'
 handles=gui.gethand;
+board_type = preproc.cam_get_board_type(handles);
+
+if strcmp(board_type, 'custom3d')
+    gui.custom_msgbox('msg',getappdata(0,'hgui'),'Custom 3D plate', ...
+        'Custom 3D plates are imported from MAT / CSV files and are not auto-detected from a single image.', ...
+        'modal','OK','OK');
+    outputArg1 = [];
+    outputArg2 = [];
+    return
+end
+
 [filename,location]=uigetfile(...
     {'*.bmp;*.tif;*.tiff;*.jpg;*.png','Image files';
     '*.bmp','Bitmaps'; ...
@@ -15,6 +26,31 @@ if ~isequal(filename,0)
     tmp_img2=mat2gray(tmp_img(:,:,1));
     tmp_img2=histeq(tmp_img2);
     tmp_img=imadjust(tmp_img(:,:,1));
+
+    if strcmp(board_type, 'checkerboard')
+        [imagePointsA,boardSizeA] = detectCheckerboardPoints(tmp_img,'HighDistortion',false);
+        [imagePointsB,boardSizeB] = detectCheckerboardPoints(tmp_img2,'HighDistortion',false);
+        if size(imagePointsA,1) >= size(imagePointsB,1)
+            boardSize = boardSizeA;
+        else
+            boardSize = boardSizeB;
+        end
+        if isempty(boardSize)
+            gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Could not detect checkerboard corners.','modal');
+            outputArg1 = [];
+            outputArg2 = [];
+            return
+        end
+        handles.calib_rows.String = int2str(boardSize(1));
+        handles.calib_columns.String = int2str(boardSize(2));
+        gui.custom_msgbox('msg',getappdata(0,'hgui'),'Checkerboard size detected', ...
+            ['Detected checkerboard inner-corner layout: ' int2str(boardSize(1)) ' x ' int2str(boardSize(2)) newline ...
+            'Keep the DIY square size value consistent with your physical target.'], ...
+            'modal','OK','OK');
+        outputArg1 = boardSize;
+        outputArg2 = [];
+        return
+    end
 
     %% QR detection
     [detectionOK, markerFamily, originCheckerColor,patternDims,checkerSize,markerSize,~] = preproc.cam_get_charuco_info_from_QRcode (tmp_img);

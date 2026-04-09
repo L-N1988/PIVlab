@@ -2347,7 +2347,7 @@ handles.multip28 = uipanel(MainWindow, 'Units','characters', 'Position', [0+marg
 parentitem=get(handles.multip28, 'Position');
 item=[0 0 0 0];
 
-item=[0 item(2)+item(4) parentitem(3) 15];
+item=[0 item(2)+item(4) parentitem(3) 19];
 handles.calib_markersetup = uipanel(handles.multip28, 'Units','characters', 'Position', [item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'title','Properties', 'Tag','calib_markersetup','fontweight','bold');
 
 parentitem=get(handles.calib_markersetup, 'Position');
@@ -2357,7 +2357,7 @@ item=[0 item(2)+item(4)+margin/4 parentitem(3)/2 1.5];
 uicontrol(handles.calib_markersetup,'Style','text','String','Board type:','Units','characters', 'HorizontalAlignment','left','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)]);
 
 item=[parentitem(3)/2 item(2) parentitem(3)/2 1.5];
-handles.calib_boardtype = uicontrol(handles.calib_markersetup,'Style','popupmenu','String',{'ChArUco DICT_4X4_1000'},'Units','characters','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','calib_boardtype','TooltipString','Select the type of calibration marker board');
+handles.calib_boardtype = uicontrol(handles.calib_markersetup,'Style','popupmenu','String',{'ChArUco DICT_4X4_1000' 'Checkerboard' 'Custom 3D plate'},'Units','characters','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','calib_boardtype','TooltipString','Select the type of calibration marker board','Callback', @preproc.cam_boardtype_Callback);
 
 item=[0 item(2)+item(4) parentitem(3)/2 1.5];
 uicontrol(handles.calib_markersetup,'Style','text','String','Origin color:','Units','characters', 'HorizontalAlignment','left','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)]);
@@ -2392,6 +2392,12 @@ handles.calib_markersize = uicontrol(handles.calib_markersetup,'Style','edit','S
 item=[0 item(2)+item(4)+margin parentitem(3)/1.5 1.5];
 handles.calib_find_params = uicontrol(handles.calib_markersetup,'Style','pushbutton','String','Guess parameters','Units','characters','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','calib_find_params','TooltipString','Automatically guess charuco parameters','Callback', @preproc.cam_find_charuco_parameters_Callback);
 
+item=[0 item(2)+item(4) parentitem(3) 1.5];
+handles.calib_load_custom_plate = uicontrol(handles.calib_markersetup,'Style','pushbutton','String','Load custom 3D plate...','Units','characters','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','calib_load_custom_plate','TooltipString','Load a MAT, CSV, or TXT custom plate definition','Callback', @preproc.cam_load_custom_plate_Callback,'Enable','off');
+
+item=[0 item(2)+item(4) parentitem(3) 1.5];
+handles.calib_custom_plate_info = uicontrol(handles.calib_markersetup,'Style','text','String','No custom 3D plate loaded','Units','characters','HorizontalAlignment','left','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','calib_custom_plate_info','Visible','off');
+
 %{
 item=[0 0 0 0];
 parentitem=get(handles.multip28, 'Position');
@@ -2405,7 +2411,7 @@ handles.calib_dolivedetect = uicontrol(handles.calib_livedetection,'Style','chec
 %}
 item=[0 0 0 0];
 parentitem=get(handles.multip28, 'Position');
-item=[0 item(2)+item(4)+20+margin*2 parentitem(3) 5];
+item=[0 item(2)+item(4)+24+margin*2 parentitem(3) 5];
 handles.calib_generate = uipanel(handles.multip28, 'Units','characters', 'Position', [item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'title','Marker board generation', 'Tag','calib_generate','fontweight','bold');
 parentitem=get(handles.calib_generate, 'Position');
 item=[0 0 0 0];

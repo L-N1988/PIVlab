@@ -27,12 +27,13 @@ void mexFunction(int nlhs, mxArray *plhs[],
     double* imgData = mxGetPr(prhs[0]);
 
     // ----------------------------
-    // worldPoints (Mx2)
+    // worldPoints (Mx2 or Mx3)
     // ----------------------------
-    if (!mxIsDouble(prhs[1]) || mxGetN(prhs[1]) != 2)
-        mexErrMsgTxt("worldPoints must be Mx2 double");
+    if (!mxIsDouble(prhs[1]) || (mxGetN(prhs[1]) != 2 && mxGetN(prhs[1]) != 3))
+        mexErrMsgTxt("worldPoints must be Mx2 or Mx3 double");
 
     double* worldData = mxGetPr(prhs[1]);
+    mwSize worldDim = mxGetN(prhs[1]);
 
     // ----------------------------
     // imageSize
@@ -64,7 +65,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
 
                 double wx = worldData[i];
                 double wy = worldData[i + M];
-                objPts.emplace_back((float)wx, (float)wy, 0.0f);
+                double wz = (worldDim == 3) ? worldData[i + 2*M] : 0.0;
+                objPts.emplace_back((float)wx, (float)wy, (float)wz);
             }
         }
 

@@ -1,59 +1,103 @@
 function cam_generateboard_Callback (~,~,~)
-dpi=300;
 handles=gui.gethand;
-originCheckerColor = handles.calib_origincolor.String{handles.calib_origincolor.Value};
+board_type = preproc.cam_get_board_type(handles);
+
+if strcmp(board_type, 'custom3d')
+	gui.custom_msgbox('msg',getappdata(0,'hgui'),'Custom 3D plate', ...
+		'Custom 3D plates are imported from MAT / CSV files and are not generated inside PIVlab.', ...
+		'modal','OK','OK');
+	return
+end
+
+dpi=300;
 patternDims = [str2double(handles.calib_rows.String),str2double(handles.calib_columns.String)];
-if contains(handles.calib_boardtype.String{handles.calib_boardtype.Value}, 'DICT_4X4_1000')
-    markerFamily = 'DICT_4X4_1000';
-end
 checkerSize = str2double(handles.calib_checkersize.String);
-markerSize = str2double(handles.calib_markersize.String);
-if patternDims(1)<3 || patternDims(2)<3
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Rows and columns must both be >= 3.','modal');
-    return
-end
-if strcmpi(originCheckerColor,'white') ~=0 && mod(patternDims(1), 2) ~= 0
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Number of rows of the ChArUco board must be even when OriginCheckerColor is white.','modal');
-    return
-end
-if markerSize >= checkerSize
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Marker size must be smaller than checker size.','modal');
-    return
-end
-if patternDims(1)*patternDims(2) > 1000
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',['Too many checkers (1000 checkers are the maximum). Reduce the amount of rows or columns, so that' newline 'Rows * Columns <= 1000.'],'modal');
-    return
-end
-if patternDims(1) == patternDims(2)
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Amount of rows and columns should not be equal to avoid ambiguity.','modal');
-    return
-end
-minMarkerID = 0;
-%margins are 3 checkers wide
-marginsize=round(checkerSize* dpi / 25.4*3);
-%margins are 10% of image wide:
-%marginsize=max([round(patternDims(1)*checkerSize* dpi / 25.4*0.1) round(patternDims(2)*checkerSize* dpi / 25.4*0.1)]);
-imageSize (1) =ceil(patternDims(1)*checkerSize* dpi / 25.4)+2*marginsize; %size in pixels at  dpi
-imageSize (2) = ceil(patternDims(2)*checkerSize* dpi / 25.4)+2*marginsize; %size in pixels at  dpi
 
-answer = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Generate board?',['Generate a board with a size of ' num2str(imageSize(2)) '*' num2str(imageSize(1)) ' pixels?' newline 'At ' num2str(dpi) ' dpi, this is ' num2str(round(imageSize(2)/dpi*25.4)) '*' num2str(round(imageSize(1)/dpi*25.4)) ' mm.' newline 'Save the image, then print at ' num2str(dpi) ' dpi and 100 % scaling.'],'modal',{'Yes','Cancel'},'Yes');
-if ~strcmpi(answer,'Yes')
-    gui.toolsavailable(1)
-    return
+if any(~isfinite(patternDims)) || any(patternDims < 3)
+	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Rows and columns must both be >= 3.','modal');
+	return
 end
 
-gui.toolsavailable(0,'Generating Charuco board...');drawnow;
-I = double(generateCharucoBoard(imageSize,patternDims,markerFamily,checkerSize,markerSize,"OriginCheckerColor",originCheckerColor,"MinMarkerID",minMarkerID,"MarginSize",marginsize))/255;
-%% add logo, text information and qr code to image
-if strcmp (markerFamily ,'DICT_4X4_1000')
-    qr_fam=1;
+if strcmp(board_type, 'charuco')
+	originCheckerColor = handles.calib_origincolor.String{handles.calib_origincolor.Value};
+	if contains(handles.calib_boardtype.String{handles.calib_boardtype.Value}, 'DICT_4X4_1000')
+		markerFamily = 'DICT_4X4_1000';
+	end
+	markerSize = str2double(handles.calib_markersize.String);
+	if strcmpi(originCheckerColor,'white') ~=0 && mod(patternDims(1), 2) ~= 0
+		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Number of rows of the ChArUco board must be even when OriginCheckerColor is white.','modal');
+		return
+	end
+	if markerSize >= checkerSize
+		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Marker size must be smaller than checker size.','modal');
+		return
+	end
+	if patternDims(1)*patternDims(2) > 1000
+		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',['Too many checkers (1000 checkers are the maximum). Reduce the amount of rows or columns, so that' newline 'Rows * Columns <= 1000.'],'modal');
+		return
+	end
+	if patternDims(1) == patternDims(2)
+		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Amount of rows and columns should not be equal to avoid ambiguity.','modal');
+		return
+	end
+	minMarkerID = 0;
+	marginsize=round(checkerSize* dpi / 25.4*3);
+	imageSize (1) =ceil(patternDims(1)*checkerSize* dpi / 25.4)+2*marginsize;
+	imageSize (2) = ceil(patternDims(2)*checkerSize* dpi / 25.4)+2*marginsize;
+
+	answer = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Generate board?', ...
+		['Generate a board with a size of ' num2str(imageSize(2)) '*' num2str(imageSize(1)) ' pixels?' newline ...
+		'At ' num2str(dpi) ' dpi, this is ' num2str(round(imageSize(2)/dpi*25.4)) '*' num2str(round(imageSize(1)/dpi*25.4)) ' mm.' newline ...
+		'Save the image, then print at ' num2str(dpi) ' dpi and 100 % scaling.'], ...
+		'modal',{'Yes','Cancel'},'Yes');
+	if ~strcmpi(answer,'Yes')
+		gui.toolsavailable(1)
+		return
+	end
+
+	gui.toolsavailable(0,'Generating Charuco board...');drawnow;
+	I = double(generateCharucoBoard(imageSize,patternDims,markerFamily,checkerSize,markerSize,"OriginCheckerColor",originCheckerColor,"MinMarkerID",minMarkerID,"MarginSize",marginsize))/255;
+	I = add_charuco_qr_and_decorations(I, imageSize, marginsize, originCheckerColor, markerFamily, patternDims, checkerSize, markerSize, dpi);
+	default_name = [originCheckerColor '_' markerFamily '_' num2str(patternDims(1)) 'x' num2str(patternDims(2)) '_' num2str(checkerSize) 'mm_' num2str(markerSize) 'mm_' num2str(dpi) 'dpi.tif'];
 else
-    qr_fam=0;
+	square_rows = patternDims(1) + 1;
+	square_cols = patternDims(2) + 1;
+	marginsize = round(checkerSize * dpi / 25.4 * 2);
+	square_px = ceil(checkerSize * dpi / 25.4);
+	imageSize = [square_rows * square_px + 2*marginsize, square_cols * square_px + 2*marginsize];
+
+	answer = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Generate checkerboard?', ...
+		['Generate a checkerboard with ' num2str(patternDims(1)) ' x ' num2str(patternDims(2)) ' inner corners?' newline ...
+		'This prints as ' num2str(round(imageSize(2)/dpi*25.4)) '*' num2str(round(imageSize(1)/dpi*25.4)) ' mm at ' num2str(dpi) ' dpi.' newline ...
+		'DIY square size is ' num2str(checkerSize) ' mm.'], ...
+		'modal',{'Yes','Cancel'},'Yes');
+	if ~strcmpi(answer,'Yes')
+		return
+	end
+
+	gui.toolsavailable(0,'Generating checkerboard...');drawnow;
+	I = generate_checkerboard_image(square_rows, square_cols, square_px, marginsize);
+	default_name = ['checkerboard_' num2str(patternDims(1)) 'x' num2str(patternDims(2)) '_inner_' num2str(checkerSize) 'mm_' num2str(dpi) 'dpi.tif'];
+end
+
+gui.toolsavailable(1)
+figure;imshow(I)
+[file, location] = uiputfile('*.tif','Save board as...',default_name);
+if file ~=0
+	imwrite(I,fullfile(location,file),'tif','Resolution',dpi);
+end
+end
+
+function I = add_charuco_qr_and_decorations(I, imageSize, marginsize, originCheckerColor, markerFamily, patternDims, checkerSize, markerSize, dpi)
+if strcmp (markerFamily ,'DICT_4X4_1000')
+	qr_fam=1;
+else
+	qr_fam=0;
 end
 if strcmpi(originCheckerColor,'white')
-    qr_orig = 'w';
+	qr_orig = 'w';
 else
-    qr_orig = 'b';
+	qr_orig = 'b';
 end
 data=['F:' num2str(qr_fam) ',O:' qr_orig ',R:' num2str(patternDims(1)) ',C:' num2str(patternDims(2)) ',S:' num2str(checkerSize) ',M:' num2str(markerSize)];
 
@@ -87,6 +131,7 @@ oltsize1=[max_height olt_width1];
 olt_height1= floor(size(olt_logo,1)/size(olt_logo,2) * max_width);
 oltsize2=[olt_height1 max_width];
 
+oltsize = oltsize2;
 if olt_width1 > max_width
 	oltsize=oltsize2;
 end
@@ -107,10 +152,21 @@ I=I.*QR_background;
 
 textx=round(imageSize(2)/2);
 texty=round(marginsize/2);
-I = insertText(I,[textx,texty],[originCheckerColor '; ' markerFamily '; ' num2str(patternDims(1)) 'x' num2str(patternDims(2)) '; ' num2str(checkerSize) 'mm/' num2str(markerSize) 'mm'],'FontSize',round(checkerSize*patternDims(2)/2.5),'FontColor','black','TextBoxColor','white','BoxOpacity',0,'Font','Arial Black','AnchorPoint','Center');
-gui.toolsavailable(1)
-figure;imshow(I)
-[file, location] = uiputfile('*.tif','Save charuco board as...',[originCheckerColor '_' markerFamily '_' num2str(patternDims(1)) 'x' num2str(patternDims(2)) '_' num2str(checkerSize) 'mm_' num2str(markerSize) 'mm_' num2str(dpi) 'dpi.tif']);
-if file ~=0
-    imwrite(I,fullfile(location,file),'tif','Resolution',dpi);
+if exist('insertText','file') > 0
+	I = insertText(I,[textx,texty],[originCheckerColor '; ' markerFamily '; ' num2str(patternDims(1)) 'x' num2str(patternDims(2)) '; ' num2str(checkerSize) 'mm/' num2str(markerSize) 'mm'],'FontSize',round(checkerSize*patternDims(2)/2.5),'FontColor','black','TextBoxColor','white','BoxOpacity',0,'Font','Arial Black','AnchorPoint','Center');
+end
+end
+
+function I = generate_checkerboard_image(square_rows, square_cols, square_px, marginsize)
+core = zeros(square_rows*square_px, square_cols*square_px);
+for row = 1:square_rows
+	for col = 1:square_cols
+		value = mod(row + col, 2);
+		row_idx = (row-1)*square_px + (1:square_px);
+		col_idx = (col-1)*square_px + (1:square_px);
+		core(row_idx, col_idx) = value;
+	end
+end
+I = padarray(core,[marginsize marginsize],1,'both');
+I = repmat(I,[1 1 3]);
 end

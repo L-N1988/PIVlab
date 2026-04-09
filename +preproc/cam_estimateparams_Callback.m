@@ -1,199 +1,320 @@
 function cam_estimateparams_Callback(~, ~, ~)
 warning off 'MATLAB:imagesci:imfinfo:unknownXMPpacket'
-handles=gui.gethand;
+handles = gui.gethand;
+target = preproc.cam_get_target_definition(handles);
 cam_selected_target_images = gui.retr('cam_selected_target_images');
-originCheckerColor = handles.calib_origincolor.String{handles.calib_origincolor.Value};
-if strcmpi (originCheckerColor,'white') && mod(str2double(handles.calib_rows.String),2)~=0
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Number of rows of the ChArUco board, dim1, must be even when OriginCheckerColor is white.','modal');
-    return
-end
-if str2double(handles.calib_rows.String)<3 || str2double(handles.calib_columns.String)<3
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Number of rows and columns of the ChArUco board must be >= 3.','modal');
-    return
-end
-if isempty(cam_selected_target_images) || ~iscell(cam_selected_target_images) || numel(cam_selected_target_images) <=1
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Not enough marker board images selected.','modal');
-    return
+
+try
+	validate_target_inputs(target, cam_selected_target_images);
+	[imagePoints, worldPoints, imageFileNames, imageSize, detectionSummary] = ...
+		collect_calibration_observations(target, cam_selected_target_images, handles);
+catch ME
+	gui.custom_msgbox('error', getappdata(0,'hgui'), 'Error', ME.message, 'modal');
+	return
 end
 
-% Detect calibration pattern in images
-if ~isempty(cam_selected_target_images)
-    handles.calib_usecalibration.Value = 0;
-    gui.toolsavailable(0,'Detecting markers...');drawnow;
-    detector = vision.calibration.monocular.CharucoBoardDetector();
-    patternDims = [str2double(handles.calib_rows.String),str2double(handles.calib_columns.String)];
-    if contains(handles.calib_boardtype.String{handles.calib_boardtype.Value}, 'DICT_4X4_1000')
-        markerFamily = 'DICT_4X4_1000';
-    end
-    checkerSize = str2double(handles.calib_checkersize.String);
-    markerSize = str2double(handles.calib_markersize.String);
-    if markerSize >= checkerSize
-        gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Marker size must be smaller than checker size.','modal');
-        gui.toolsavailable(1)
-        return
-    end
-    minMarkerID = 0;
-    for i=1:numel(cam_selected_target_images)
-        tmp_img=imread(cam_selected_target_images{i});
-        tmp_img=tmp_img(:,:,1);
-        tmp_img=imadjust(tmp_img);
-        [detectionOK,qr_markerFamily, qr_originCheckerColor,qr_patternDims,qr_checkerSize,qr_markerSize,~] = preproc.cam_get_charuco_info_from_QRcode (tmp_img);
-        %check if it differs from manually entered numbers
-        if detectionOK
-            if  ~strcmp(markerFamily,qr_markerFamily) || ~strcmp(originCheckerColor,qr_originCheckerColor) ||  patternDims(1) ~= qr_patternDims(1) ||  patternDims(2) ~= qr_patternDims(2) || checkerSize ~= qr_checkerSize || markerSize ~= qr_markerSize
-                button = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Warning',['User supplied information for Charuco board differs from the information found in the QR code on the board.' newline newline 'Use the information from the QR code on the board?'],'modal',{'Yes','No'},'Yes');
-                if strmatch(button,'Yes')==1
-                    markerFamily = qr_markerFamily;
-                    originCheckerColor = qr_originCheckerColor;
-                    patternDims = qr_patternDims;
-                    checkerSize = qr_checkerSize;
-                    markerSize = qr_markerSize;
-                    if strcmp(originCheckerColor,'Black')
-                        handles.calib_origincolor.Value = 1;
-                    elseif strcmp(originCheckerColor,'White')
-                        handles.calib_origincolor.Value = 2;
-                    end
-                    handles.calib_rows.String = num2str(patternDims(1));
-                    handles.calib_columns.String = num2str(patternDims(2));
-                    if strcmp(markerFamily,'DICT_4X4_1000')
-                        handles.calib_boardtype.Value = 1;
-                    end
-                    handles.calib_checkersize.String = num2str(checkerSize);
-                    handles.calib_markersize.String = num2str(markerSize);
-                end
-            else
-                disp('QR info and user info match.')
-            end
-            break
-        end
-    end
-    %% Slower but more robust due to image preprocessing:
-    %%{
-    if isMATLABReleaseOlderThan("R2025b")
-        fig = uifigure;
-        d = uiprogressdlg(fig,'Title','ChArUco board pattern detection...','Message','Starting ChArUco board pattern detection...');
-    else
-        d = uiprogressdlg(gcf,'Title','ChArUco board pattern detection...','Message','Starting ChArUco board pattern detection...');
-    end
+if isempty(imagePoints)
+	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No calibration target points detected or loaded.','modal');
+	return
+end
 
-    imagesUsed=false(numel(cam_selected_target_images),1);
-    imagePoints=[];
-    for i=1:numel(cam_selected_target_images)
-        tmp_img=imread(cam_selected_target_images{i});
-        tmp_img=tmp_img(:,:,1);
-        tmp_img=imadjust(tmp_img);
-        try
-            imagePoints_single = detectCharucoBoardPoints(tmp_img,patternDims,markerFamily,checkerSize,markerSize, 'MinMarkerID', minMarkerID, 'OriginCheckerColor', originCheckerColor,'ResolutionPerBit',16,'MarkerSizeRange',[0.005 1]);
-        catch ME
-            gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',ME.message,'modal','OK');
-            gui.toolsavailable(1)
-            return
-        end
-        if numel(imagePoints_single)>0
-            if numel(imagePoints)==0
-                imagePoints(:,:,end)=imagePoints_single;
-            else
-                imagePoints(:,:,end+1)=imagePoints_single;
-            end
-            imagesUsed(i)=true;
-        end
-        [~,name,ext] = fileparts(cam_selected_target_images{i});
-        percentage_detected=  round(numel(find(~isnan(imagePoints_single)))  / (numel(imagePoints_single)+0.00001) * 100);
-        d.Message = [name ext '  -->  '  num2str(percentage_detected) ' % valid markers.' ];
-        d.Value=i/numel(cam_selected_target_images);
-    end
-    if isMATLABReleaseOlderThan("R2025b")
-        close(fig)
-    else
-        close(d)
-    end
-    %debug
-    %{
-		for i=1:size(imagePoints,3)
-			figure;
-			imshow(imread(cam_selected_target_images{i}));
-			hold on;
-			plot(imagePoints(:,1,i), imagePoints(:,2,i),'ro');
-			legend('Detected Points','ReprojectedPoints');
-			hold off;
+gui.toolsavailable(1)
+gui.toolsavailable(0,'Calculating camera parameters...');drawnow;
+
+try
+	[cameraParams, imagesUsed, stats] = opencv.pivlab_estimateCameraParameters(imagePoints, worldPoints, imageSize);
+	[cameraParams, imagesUsed, stats, imagePoints, imageFileNames] = ...
+		refine_camera_solution(cameraParams, stats, imagePoints, worldPoints, imageSize, imageFileNames);
+
+	gui.put('cameraParams', cameraParams);
+	gui.put('cameraStats', stats);
+	if gui.retr('stereomode') == 1
+		stereo.store_current_camera_state();
+	end
+
+	show_calibration_preview(imageFileNames, imagesUsed, imagePoints, stats);
+	show_calibration_success_message(target, imagePoints, imagesUsed, detectionSummary, stats);
+catch ME
+	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',{'Problem with camera calibration: ';' '; ME.message},'modal');
+end
+gui.toolsavailable(1)
+end
+
+function validate_target_inputs(target, image_files)
+switch target.type
+	case 'charuco'
+		if strcmpi(target.originCheckerColor,'white') && mod(target.patternDims(1),2) ~= 0
+			error('PIVlab:InvalidCharucoRows', ...
+				'Number of rows of the ChArUco board must be even when OriginCheckerColor is white.');
 		end
-    %}
-    %%}
-    %% Faster, but dark images are ignored:
-    %[imagePoints, imagesUsed] = detectPatternPoints(detector, cam_selected_target_images, patternDims, markerFamily, checkerSize, markerSize, 'MinMarkerID', minMarkerID, 'OriginCheckerColor', originCheckerColor);
-    if isempty(imagePoints)
-        gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No ChArUco markers detected.','modal');
-        gui.toolsavailable(1)
-        return
-    end
-    gui.toolsavailable(1)
-    gui.toolsavailable(0,'Calculating camera parameters...');drawnow;
-    imageFileNames = cam_selected_target_images(imagesUsed);
+		if any(target.patternDims < 3)
+			error('PIVlab:InvalidCharucoSize', ...
+				'Number of rows and columns of the ChArUco board must be >= 3.');
+		end
+		if target.markerSize >= target.checkerSize
+			error('PIVlab:InvalidMarkerSize', ...
+				'Marker size must be smaller than checker size.');
+		end
+		if isempty(image_files) || ~iscell(image_files) || numel(image_files) <= 1
+			error('PIVlab:NotEnoughCalibrationImages', ...
+				'Not enough marker board images selected.');
+		end
+	case 'checkerboard'
+		if any(target.patternDims < 3)
+			error('PIVlab:InvalidCheckerboardSize', ...
+				'Checkerboard rows and columns must both be >= 3.');
+		end
+		if isempty(image_files) || ~iscell(image_files) || numel(image_files) <= 1
+			error('PIVlab:NotEnoughCalibrationImages', ...
+				'Not enough checkerboard images selected.');
+		end
+	case 'custom3d'
+		if isempty(target.customPlate) || ~isstruct(target.customPlate)
+			error('PIVlab:MissingCustomPlate', ...
+				'Load a custom 3D plate MAT or CSV file first.');
+		end
+		if ~isfield(target.customPlate, 'hasImagePoints') || ~target.customPlate.hasImagePoints
+			error('PIVlab:MissingCustomPlateImagePoints', ...
+				['Custom 3D plate calibration requires imported imagePoints aligned with worldPoints. ' ...
+				'Provide them in the MAT file as an Nx2xM array.']);
+		end
+	otherwise
+		error('PIVlab:UnsupportedBoardType', 'Unsupported board type.');
+end
+end
 
-    % Read the first image to obtain image size
-    originalImage = imread(cam_selected_target_images{1});
-    [mrows, ncols, ~] = size(originalImage);
+function [imagePoints, worldPoints, imageFileNames, imageSize, detectionSummary] = collect_calibration_observations(target, image_files, handles)
+switch target.type
+	case 'custom3d'
+		[imagePoints, worldPoints, imageFileNames, imageSize] = collect_custom_plate_observations(target, image_files);
+		detectionSummary = struct('target_type', target.type, 'detected_layout', [], 'used_qr', false);
+	otherwise
+		[imagePoints, imageFileNames, target, detectionSummary] = collect_planar_target_observations(target, image_files, handles);
+		if strcmp(target.type, 'charuco')
+			detector = vision.calibration.monocular.CharucoBoardDetector();
+			worldPoints = generateWorldPoints(detector, 'PatternDims', target.patternDims, 'CheckerSize', target.checkerSize);
+		else
+			worldPoints = patternWorldPoints('checkerboard', target.patternDims, target.checkerSize);
+		end
+		first_image = imread(image_files{1});
+		imageSize = size(first_image);
+		imageSize = imageSize(1:2);
+end
+end
 
-    % Generate world coordinates for the planar pattern keypoints
-    worldPoints = generateWorldPoints(detector, 'PatternDims', patternDims, 'CheckerSize', checkerSize);
-    % Calibrate the camera
-    use_tilted_model = logical(get(handles.calib_use_tilted_model, 'Value'));
-    try
-        [cameraParams, imagesUsed, stats] = opencv.pivlab_estimateCameraParameters(imagePoints, worldPoints, [mrows, ncols], 'use_tilted_model', use_tilted_model);
-        gui.toolsavailable(1)
-        gui.toolsavailable(0,'Refining camera parameters...');drawnow;
-        imageFileNames = imageFileNames(imagesUsed);
-        %errors = cameraParams.ReprojectionErrors;
-        errors = stats.ReprojectionErrors;
-        numImages = size(errors, 3);
-        meanErrorPerImage = zeros(numImages, 1);
-        for i = 1:numImages
-            e = errors(:, :, i);
-            meanErrorPerImage(i) = mean(sqrt(sum(e.^2, 2)),'omitnan');
-        end
-        threshold = mean(meanErrorPerImage) + 1.5*std(meanErrorPerImage);
-        badImages = find(meanErrorPerImage > threshold);
-        goodImages = find(meanErrorPerImage <= threshold);
-        if numel(badImages)>0 && numel(goodImages)>3 %if some images have been bad
-            disp(['Skipping ' num2str(numel(badImages)) ' image(s) due to high reprojection errors.'])
-            imagePoints = imagePoints(:, :, goodImages);
-            imageFileNames = imageFileNames(goodImages);
-            [cameraParams, imagesUsed, stats] = opencv.pivlab_estimateCameraParameters(imagePoints, worldPoints, [mrows, ncols], cameraParams, 'use_tilted_model', use_tilted_model);
-            imageFileNames = imageFileNames(imagesUsed);
-            disp('Images used:')
-            for i=1:numel(imageFileNames)
-                disp(imageFileNames{i})
-            end
-        end
+function [imagePoints, imageFileNames, target, summary] = collect_planar_target_observations(target, image_files, handles)
+gui.toolsavailable(0, 'Detecting markers...');drawnow;
 
-        gui.put('cameraParams',cameraParams);
-        gui.put('cameraStats',stats);
-        gui.put('cam_use_tilted_model', use_tilted_model);
-        gui.put('cam_tilted_D',   stats.D_full);
-        gui.put('cam_K_opencv',   stats.K_opencv);
-        if gui.retr('stereomode') == 1
-            stereo.store_current_camera_state();
-        end
+imagePoints = [];
+imageFileNames = {};
+summary = struct('target_type', target.type, 'detected_layout', target.patternDims, 'used_qr', false);
 
-        imshow(imread(imageFileNames{1}),'Parent',gui.retr('pivlab_axis'));
-        hold on;
-        plot(imagePoints(:,1,1), imagePoints(:,2,1),'go');
-        plot(stats.ReprojectedPoints(:,1,1),stats.ReprojectedPoints(:,2,1),'r+');
-        legend('Detected Points','ReprojectedPoints');
-        hold off;
+if strcmp(target.type, 'charuco')
+	target = maybe_override_charuco_from_qr(target, image_files, handles);
+	summary.detected_layout = target.patternDims;
+	summary.used_qr = true;
+end
 
-        possible_grid_points = (patternDims(1)-1) * (patternDims(2)-1) * sum(imagesUsed);
-        detected_grid_points = sum(~isnan(imagePoints(:)))/2;
-        percentage_detected=round(detected_grid_points/possible_grid_points*100,1);
+if strcmp(target.type, 'charuco')
+	fig = [];
+	if isMATLABReleaseOlderThan("R2025b")
+		fig = uifigure;
+		progress = uiprogressdlg(fig,'Title','Calibration pattern detection...','Message','Starting pattern detection...');
+	else
+		progress = uiprogressdlg(gcf,'Title','Calibration pattern detection...','Message','Starting pattern detection...');
+	end
+end
 
-        err = stats.ReprojectionErrors;
-        errNorm = sqrt(err(:,1,:).^2 + err(:,2,:).^2);
-        meanReprojError = mean(errNorm(:), 'omitnan');
-        gui.custom_msgbox('msg',getappdata(0,'hgui'),'Success',{'Success.' ;  ['Detected ' num2str(percentage_detected) '% of checkers.' ] ; ['Mean reprojection error: ' num2str(round(meanReprojError,2)) ' px']},'modal',{'OK'},'OK');
-    catch ME
-        gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',{'Problem with camera calibration: ' ;' '; ME.message},'modal');
-    end
-    gui.toolsavailable(1)
+try
+	imagesUsed = false(numel(image_files), 1);
+	for i = 1:numel(image_files)
+		[points, detected_target] = preproc.cam_detect_target_points(image_files{i}, target, 'calibration');
+		if strcmp(target.type, 'checkerboard') && ~isempty(points)
+			target = maybe_update_checkerboard_layout(target, detected_target, handles);
+			summary.detected_layout = target.patternDims;
+		end
+
+		if ~isempty(points)
+			if isempty(imagePoints)
+				imagePoints(:,:,1) = points;
+			else
+				imagePoints(:,:,end+1) = points; %#ok<AGROW>
+			end
+			imageFileNames{end+1,1} = image_files{i}; %#ok<AGROW>
+			imagesUsed(i) = true;
+		end
+
+		if strcmp(target.type, 'charuco')
+			[~,name,ext] = fileparts(image_files{i});
+			percentage_detected=round(numel(find(~isnan(points))) / max(numel(points),1) * 100);
+			progress.Message = [name ext '  -->  '  num2str(percentage_detected) ' % valid markers.' ];
+			progress.Value = i / numel(image_files);
+		end
+	end
+catch ME
+	if exist('progress', 'var') && ~isempty(progress)
+		close(progress)
+	end
+	if exist('fig', 'var') && ~isempty(fig)
+		close(fig)
+	end
+	rethrow(ME)
+end
+
+if exist('progress', 'var') && ~isempty(progress)
+	close(progress)
+end
+if exist('fig', 'var') && ~isempty(fig)
+	close(fig)
+end
+end
+
+function target = maybe_override_charuco_from_qr(target, image_files, handles)
+for i = 1:numel(image_files)
+	tmp_img = imread(image_files{i});
+	tmp_img = tmp_img(:,:,1);
+	tmp_img = imadjust(tmp_img);
+	[detectionOK, qr_markerFamily, qr_originCheckerColor, qr_patternDims, qr_checkerSize, qr_markerSize, ~] = ...
+		preproc.cam_get_charuco_info_from_QRcode(tmp_img);
+	if detectionOK
+		mismatch = ~strcmp(target.markerFamily, qr_markerFamily) || ...
+			~strcmp(target.originCheckerColor, qr_originCheckerColor) || ...
+			any(target.patternDims ~= qr_patternDims) || ...
+			target.checkerSize ~= qr_checkerSize || ...
+			target.markerSize ~= qr_markerSize;
+		if mismatch
+			button = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Warning', ...
+				['User supplied information for ChArUco board differs from the information found in the QR code on the board.' newline newline ...
+				'Use the information from the QR code on the board?'], ...
+				'modal',{'Yes','No'},'Yes');
+			if strmatch(button,'Yes')==1 %#ok<*MATCH2>
+				target.markerFamily = qr_markerFamily;
+				target.originCheckerColor = qr_originCheckerColor;
+				target.patternDims = qr_patternDims;
+				target.checkerSize = qr_checkerSize;
+				target.markerSize = qr_markerSize;
+				if strcmp(target.originCheckerColor,'Black')
+					handles.calib_origincolor.Value = 1;
+				else
+					handles.calib_origincolor.Value = 2;
+				end
+				handles.calib_rows.String = num2str(target.patternDims(1));
+				handles.calib_columns.String = num2str(target.patternDims(2));
+				handles.calib_checkersize.String = num2str(target.checkerSize);
+				handles.calib_markersize.String = num2str(target.markerSize);
+			end
+		end
+		break
+	end
+end
+end
+
+function target = maybe_update_checkerboard_layout(target, detected_target, handles)
+if isempty(detected_target.patternDims) || any(detected_target.patternDims <= 0)
+	return
+end
+if any(target.patternDims ~= detected_target.patternDims)
+	target.patternDims = detected_target.patternDims;
+	handles.calib_rows.String = num2str(target.patternDims(1));
+	handles.calib_columns.String = num2str(target.patternDims(2));
+end
+end
+
+function [imagePoints, worldPoints, imageFileNames, imageSize] = collect_custom_plate_observations(target, image_files)
+plate = target.customPlate;
+imagePoints = plate.imagePoints;
+worldPoints = plate.worldPoints;
+imageFileNames = plate.imageFileNames;
+imageSize = plate.imageSize;
+
+if isempty(imageSize)
+	if ~isempty(image_files)
+		first_image = imread(image_files{1});
+		imageSize = size(first_image);
+		imageSize = imageSize(1:2);
+	elseif ~isempty(imageFileNames) && exist(imageFileNames{1}, 'file')
+		first_image = imread(imageFileNames{1});
+		imageSize = size(first_image);
+		imageSize = imageSize(1:2);
+	else
+		error('PIVlab:MissingCustomPlateImageSize', ...
+			'Custom 3D plate calibration needs imageSize in the MAT file or loaded calibration images.');
+	end
+end
+
+if isempty(imageFileNames) && ~isempty(image_files)
+	imageFileNames = image_files(:);
+end
+end
+
+function [cameraParams, imagesUsed, stats, imagePoints, imageFileNames] = refine_camera_solution(cameraParams, stats, imagePoints, worldPoints, imageSize, imageFileNames)
+imagesUsed = true(size(imagePoints,3),1);
+errors = stats.ReprojectionErrors;
+numImages = size(errors, 3);
+meanErrorPerImage = zeros(numImages, 1);
+for i = 1:numImages
+	e = errors(:, :, i);
+	meanErrorPerImage(i) = mean(sqrt(sum(e.^2, 2)),'omitnan');
+end
+threshold = mean(meanErrorPerImage) + 1.5*std(meanErrorPerImage);
+badImages = find(meanErrorPerImage > threshold);
+goodImages = find(meanErrorPerImage <= threshold);
+
+if numel(badImages) > 0 && numel(goodImages) > 3
+	disp(['Skipping ' num2str(numel(badImages)) ' image(s) due to high reprojection errors.'])
+	imagePoints = imagePoints(:, :, goodImages);
+	if ~isempty(imageFileNames)
+		imageFileNames = imageFileNames(goodImages);
+	end
+	[cameraParams, imagesUsed, stats] = opencv.pivlab_estimateCameraParameters(imagePoints, worldPoints, imageSize, cameraParams);
+	if ~isempty(imageFileNames)
+		imageFileNames = imageFileNames(imagesUsed);
+	end
+end
+end
+
+function show_calibration_preview(imageFileNames, imagesUsed, imagePoints, stats)
+used_index = find(imagesUsed, 1);
+if isempty(used_index)
+	used_index = 1;
+end
+
+if ~isempty(imageFileNames) && numel(imageFileNames) >= used_index && exist(imageFileNames{used_index}, 'file')
+	imshow(imread(imageFileNames{used_index}),'Parent',gui.retr('pivlab_axis'));
+	hold on;
+	plot(imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
+	plot(stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
+	legend('Detected Points','ReprojectedPoints');
+	hold off;
 else
-    gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No calibration image data was loaded.','modal');
+	cla(gui.retr('pivlab_axis'));
+	axes(gui.retr('pivlab_axis')); %#ok<LAXES>
+	plot(imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
+	hold on;
+	plot(stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
+	legend('Detected Points','ReprojectedPoints');
+	hold off;
+end
+end
+
+function show_calibration_success_message(target, imagePoints, imagesUsed, detectionSummary, stats)
+possible_grid_points = size(imagePoints,1) * sum(imagesUsed);
+detected_grid_points = sum(~isnan(imagePoints(:))) / 2;
+percentage_detected = round(detected_grid_points / max(possible_grid_points, 1) * 100, 1);
+
+err = stats.ReprojectionErrors;
+errNorm = sqrt(err(:,1,:).^2 + err(:,2,:).^2);
+meanReprojError = mean(errNorm(:), 'omitnan');
+
+message = {'Success.'; ...
+	['Target type: ' target.name]; ...
+	['Detected ' num2str(percentage_detected) '% of calibration points.']; ...
+	['Mean reprojection error: ' num2str(round(meanReprojError,2)) ' px']};
+if strcmp(target.type, 'checkerboard')
+	message{end+1} = ['Detected inner-corner layout: ' num2str(detectionSummary.detected_layout(1)) ' x ' num2str(detectionSummary.detected_layout(2))];
+elseif strcmp(target.type, 'custom3d')
+	message{end+1} = ['Imported world points: ' num2str(size(target.customPlate.worldPoints,1))];
+end
+
+gui.custom_msgbox('msg',getappdata(0,'hgui'),'Success',message,'modal',{'OK'},'OK');
 end

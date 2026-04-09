@@ -6,3 +6,4 @@ if isempty (do_charuco_detection)
     do_charuco_detection=0;
 end
 set(handles.calib_dolivedetect,'Value',do_charuco_detection);
+preproc.cam_boardtype_Callback();

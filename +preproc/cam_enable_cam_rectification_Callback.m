@@ -2,22 +2,30 @@ function cam_enable_cam_rectification_Callback(caller,~,~)
 handles=gui.gethand;
 filepath=gui.retr('filepath');
 filename=gui.retr('filename');
-if size(filepath,1) <= 1 && handles.calib_userectification.Value == 1 %did the user load piv images?
+cameraParams=gui.retr('cameraParams');
+cam_selected_rectification_image = gui.retr('cam_selected_rectification_image');
+target = preproc.cam_get_target_definition(handles);
+
+if size(filepath,1) <= 1 && handles.calib_userectification.Value == 1
 	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No PIV images were loaded.','modal');
 	handles.calib_userectification.Value = 0;
 	return
 end
-
-cameraParams=gui.retr('cameraParams');
-if isempty (cameraParams)
+if isempty(cameraParams)
 	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','"Estimate cam parameters" or "Load parameters" needs to be performed first','modal');
 	handles.calib_userectification.Value = 0;
 	return
 end
-cam_selected_rectification_image = gui.retr('cam_selected_rectification_image');
-if isempty (cam_selected_rectification_image)
+if isempty(cam_selected_rectification_image)
 	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No target image selected.','modal');
 	handles.calib_userectification.Value = 0;
+	return
+end
+if strcmp(target.type, 'custom3d')
+	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error', ...
+		'Image rectification is only supported for planar ChArUco and checkerboard targets.','modal');
+	handles.calib_userectification.Value = 0;
+	gui.put('cam_use_rectification',0);
 	return
 end
 
@@ -27,18 +35,14 @@ else
 	res='OK';
 end
 if ~strcmpi(res,'OK')
-	if handles.calib_userectification.Value == 1
-		handles.calib_userectification.Value = 0;
-	else
-		handles.calib_userectification.Value = 1;
-	end
+	handles.calib_userectification.Value = 1 - handles.calib_userectification.Value;
 	return
 end
-if ~isempty (cameraParams) && ~isempty(cam_selected_rectification_image)
-	%disp('muss bei jeder Änderung eigentlich masken löschen, ROI löschen, ergebnisse löschen...')
-	gui.put ('resultslist', []); %clears old results
+
+if ~isempty(cameraParams) && ~isempty(cam_selected_rectification_image)
+	gui.put ('resultslist', []);
 	gui.put ('derived',[]);
-	gui.put('displaywhat',1);%vectors
+	gui.put('displaywhat',1);
 	gui.put('framemanualdeletion',[]);
 	gui.put('manualdeletion',[]);
 	gui.put('streamlinesX',[]);
@@ -52,11 +56,10 @@ if ~isempty (cameraParams) && ~isempty(cam_selected_rectification_image)
 	roi.clear_roi_Callback
 	gui.put('masks_in_frame',[]);
 	ismean=gui.retr('ismean');
-	for i=size(ismean,1):-1:1 %remove averaged results
+	for i=size(ismean,1):-1:1
 		if ismean(i,1)==1
 			filepath(i*2,:)=[];
 			filename(i*2,:)=[];
-
 			filepath(i*2-1,:)=[];
 			filename(i*2-1,:)=[];
 		end
@@ -65,80 +68,30 @@ if ~isempty (cameraParams) && ~isempty(cam_selected_rectification_image)
 	gui.put('filename',filename);
 	gui.put('ismean',[]);
 end
+
 if handles.calib_userectification.Value == 1
-	if ~isempty (cameraParams) && ~isempty(cam_selected_rectification_image)
-		gui.put('cam_use_rectification',1);
-	else
-		gui.put('cam_use_rectification',0);
-		handles.calib_userectification.Value = 0;
-	end
+	gui.put('cam_use_rectification',1);
 else
 	gui.put('cam_use_rectification',0);
 end
-originCheckerColor = handles.calib_origincolor.String{handles.calib_origincolor.Value} ;
-if strcmpi (originCheckerColor,'white') && mod(str2double(handles.calib_rows.String),2)~=0
-	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Number of rows of the ChArUco board, dim1, must be even when OriginCheckerColor is white.','modal');
+
+[imagePoints1, target, detectionImage] = preproc.cam_detect_target_points(cam_selected_rectification_image, target, 'rectification');
+if isempty(imagePoints1)
+	gui.custom_msgbox('error',getappdata(0,'hgui'),'Error',['No ' target.name ' points detected.'],'modal');
+	gui.toolsavailable(1)
 	return
 end
-if ~isempty(cam_selected_rectification_image)
-	%handles.calib_usecalibration.Value = 0;
-	gui.toolsavailable(0,'Detecting markers...');drawnow;
-	%detector = vision.calibration.monocular.CharucoBoardDetector();
-	patternDims = [str2double(handles.calib_rows.String),str2double(handles.calib_columns.String)];
-	if contains(handles.calib_boardtype.String{handles.calib_boardtype.Value}, 'DICT_4X4_1000')
-		markerFamily = 'DICT_4X4_1000';
-	end
-	checkerSize = str2double(handles.calib_checkersize.String);
-	markerSize = str2double(handles.calib_markersize.String);
-	if markerSize >= checkerSize
-		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','Marker size must be smaller than checker size.','modal');
-		gui.toolsavailable(1)
-		return
-	end
-	minMarkerID = 0;
-	%% Slower but more robust due to image preprocessing:
-	%%{
-	tmp_img=imread(cam_selected_rectification_image);
-	tmp_img=imadjust(tmp_img);
-	tmp_img=imsharpen(tmp_img);
-	imagePoints1 = detectCharucoBoardPoints(tmp_img,patternDims,markerFamily,checkerSize,markerSize, 'MinMarkerID', minMarkerID, 'OriginCheckerColor', originCheckerColor,'RefineCorners',true,'ResolutionPerBit',16,'MarkerSizeRange',[0.005 1]);
-	%%}
-	%% faster but no preproc possible
-	%[imagePoints1, ~] = detectPatternPoints(detector, cam_selected_rectification_image, patternDims, markerFamily, checkerSize, markerSize, 'MinMarkerID', minMarkerID, 'OriginCheckerColor', originCheckerColor);
-	if isempty(imagePoints1)
-		gui.custom_msgbox('error',getappdata(0,'hgui'),'Error','No ChArUco markers detected.','modal');
-		gui.toolsavailable(1)
-		return
-	end
-end
 
-[mean_checker_size_x,mean_checker_size_y]=preproc.cam_meanCharucoSize(tmp_img,markerFamily,checkerSize,markerSize);
-
-checker_size_px=(mean_checker_size_y+mean_checker_size_x)/2 * handles.calib_upscale.Value;
-
-worldPoints = patternWorldPoints("charuco-board",patternDims,checker_size_px);%checkerSize); %checkersize muss die Größe haben, die die quadrate im eingangsbild in pixeln haben.
-
+gui.toolsavailable(0,'Detecting markers...');drawnow;
+[worldPoints, target] = preproc.cam_get_rectification_world_points(target, imagePoints1, detectionImage, handles.calib_upscale.Value);
 worldPoints(isnan(imagePoints1))=NaN;
-imagePoints1 = rmmissing(imagePoints1); %remove missing entries... does that work simply like this? --> yes. If matching world points are also removed.
+imagePoints1 = rmmissing(imagePoints1);
 worldPoints = rmmissing(worldPoints);
-
 undistortedPoints = undistortPoints(imagePoints1,cameraParams.Intrinsics);
-
-if patternDims(1) > patternDims(2) %Fixes the issue that high slender calibration bards result in rotated output
-    % swap axes
-	worldPoints = worldPoints(:, [2 1]);
-	% flip y axis
-	worldPoints(:,2) = -worldPoints(:,2);
-end
-
-rectification_tform = fitgeotform2d(undistortedPoints,worldPoints,'projective'); % standard für schräge ansicht
-%rectification_tform = fitgeotform2d(undistortedPoints,worldPoints,'polynomial',3); % langsam, aber gar nicht so schlecht, könnte für Rohre gehen...
-%rectification_tform = fitgeotform2d(undistortedPoints,worldPoints,'lwm',128); % Das könnte ziemlich krass sein wenn man es schafft überall im Bild marker zu platzieren. Aber extrem langsam in der Anwendung leider....
-%rectification_tform = fitgeotform2d(undistortedPoints,worldPoints,'pwl'); % langsam, aber gar nicht so schlecht, könnte für Rohre gehen...
+rectification_tform = fitgeotform2d(undistortedPoints,worldPoints,'projective');
 gui.put('rectification_tform',rectification_tform);
 gui.toolsavailable(1)
 
-%% check what the image size will be after image undistortion
 if handles.calib_userectification.Value ==1
 	gui.put('expected_image_size',[]);
 	gui.put('cam_use_rectification',1);
@@ -158,34 +111,30 @@ else
 end
 
 if handles.calib_userectification.Value == 1
-	%% Automatically update the spatial calibration when image was rectified.
-	%detect again in undistorted image
 	view_raw=handles.calib_viewtype.Value;
 	if view_raw==1
 		view='valid';
 	elseif view_raw==2
 		view='same';
-	elseif view_raw==3
+	else
 		view='full';
 	end
-	caliimg = preproc.cam_undistort(tmp_img,'cubic',view,1,1,cameraParams,rectification_tform);
-	imagePoints1 = detectCharucoBoardPoints(caliimg,patternDims,markerFamily,checkerSize,markerSize, 'MinMarkerID', minMarkerID, 'OriginCheckerColor', originCheckerColor,'RefineCorners',true,'ResolutionPerBit',16,'MarkerSizeRange',[0.005 1]);
-	worldPoints = patternWorldPoints("charuco-board",patternDims,checkerSize);
-	worldPoints(isnan(imagePoints1))=NaN;
-	imagePoints1 = rmmissing(imagePoints1); %remove missing entries... does that work simply like this? --> yes. If matching world points are also removed.
-	worldPoints = rmmissing(worldPoints);
-	%imshow(caliimg);hold on;scatter(imagePoints1(:,1),imagePoints1(:,2),300,'rx');hold off; %for debugging
-	x = imagePoints1(:,1);
-	y = imagePoints1(:,2);
+	caliimg = preproc.cam_undistort(detectionImage,'cubic',view,1,1,cameraParams,rectification_tform);
+	[rectifiedPoints, target] = preproc.cam_detect_target_points(caliimg, target, 'rectification');
+	[metricWorldPoints, target] = get_metric_world_points(target, rectifiedPoints);
+
+	metricWorldPoints(isnan(rectifiedPoints))=NaN;
+	rectifiedPoints = rmmissing(rectifiedPoints);
+	metricWorldPoints = rmmissing(metricWorldPoints);
+
+	x = rectifiedPoints(:,1);
+	y = rectifiedPoints(:,2);
 	[~, idx] = min(x + y);
-	topLeft_image = imagePoints1(idx,:);
-	topLeft_world = worldPoints(idx,:);
+	topLeft_image = rectifiedPoints(idx,:);
+	topLeft_world = metricWorldPoints(idx,:);
 	[~, idx] = max(x + y);
-	bottomRight_image = imagePoints1(idx,:);
-	bottomRight_world = worldPoints(idx,:);
-	%dx_px = bottomRight_image(1) - topLeft_image(1); %not used, calculated from line coordinates
-	%dy_px = bottomRight_image(2) - topLeft_image(2);
-	%distance_px = sqrt(dx_px^2 + dy_px^2);
+	bottomRight_image = rectifiedPoints(idx,:);
+	bottomRight_world = metricWorldPoints(idx,:);
 	dx_mm = bottomRight_world(1) - topLeft_world(1);
 	dy_mm = bottomRight_world(2) - topLeft_world(2);
 	distance_mm = sqrt(dx_mm^2 + dy_mm^2);
@@ -194,6 +143,26 @@ if handles.calib_userectification.Value == 1
 	gui.put('pointscali',[[topLeft_image(1) ; bottomRight_image(1)] [topLeft_image(2) ; bottomRight_image(2)]]);
 	calibrate.pixeldist_changed_Callback()
 end
+
 if gui.retr('stereomode') == 1
-    stereo.store_current_camera_state();
+	stereo.store_current_camera_state();
+end
+end
+
+function [metricWorldPoints, target] = get_metric_world_points(target, rectifiedPoints)
+switch target.type
+	case 'charuco'
+		metricWorldPoints = patternWorldPoints('charuco-board',target.patternDims,target.checkerSize);
+	case 'checkerboard'
+		metricWorldPoints = patternWorldPoints('checkerboard',target.patternDims,target.checkerSize);
+	otherwise
+		error('PIVlab:RectificationRequiresPlanarTarget', ...
+			'Image rectification is only supported for planar ChArUco and checkerboard targets.');
+end
+
+if target.patternDims(1) > target.patternDims(2)
+	metricWorldPoints = metricWorldPoints(:, [2 1]);
+	metricWorldPoints(:,2) = -metricWorldPoints(:,2);
+end
+metricWorldPoints(isnan(rectifiedPoints)) = NaN;
 end
