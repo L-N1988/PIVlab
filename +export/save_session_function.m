@@ -136,6 +136,7 @@ calib_upscale=handles.calib_upscale.Value;
 
 %%stereoPIV
 stereomode=gui.retr('stereomode');
+stereo_session=gui.retr('stereo_session');
 
 
 clear handles

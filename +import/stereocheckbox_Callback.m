@@ -6,7 +6,11 @@ end
 button = gui.custom_msgbox('quest',getappdata(0,'hgui'),'Warning','Switching mode will reset current results and settings. Continue?','modal',{'Yes','No'},'No');
 if strcmpi(button,'Yes')
     gui.put('stereomode',caller.Source.Value); % enable or disable stereo PIV mode, write to GUI variables.
-    'Here, all settings in the GUI must be cleared.'
+    if caller.Source.Value == 1
+        stereo.init_gui_state();
+    else
+        gui.put('stereo_session',[]);
+    end
 else % omit changing the box value
     caller.Source.Value = stereomode;
 end

@@ -133,6 +133,7 @@ calib_upscale=handles.calib_upscale.Value;
 
 %%Stereo-PIV related settings
 stereomode=gui.retr('stereomode');
+stereo_session=gui.retr('stereo_session');
 
 if ispc==1
 	[FileName,PathName] = uiputfile('*.mat','Save current settings as...',['PIVlab_set_' getenv('USERNAME') '.mat']);
@@ -148,4 +149,3 @@ clear handles hObject eventdata
 if ~isequal(FileName,0)
 	save('-v6', fullfile(PathName,FileName))
 end
-

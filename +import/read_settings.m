@@ -188,6 +188,11 @@ end
 %stereo settings
 try
     handles.stereocheckbox.Value=stereomode;
+    if exist('stereo_session','var')
+        gui.put('stereo_session',stereo_session);
+    elseif stereomode == 1
+        stereo.init_gui_state();
+    end
 catch
     disp('couldnt set stereo GUI elements')
 end
