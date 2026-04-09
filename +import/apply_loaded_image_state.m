@@ -93,6 +93,10 @@ end
 		set(hgui, 'Name', [appname ' ' gui.retr('PIVver') '   [Path: ' state.pathname ']']);
 	end
 
+	if gui.retr('stereomode') == 1 && isfield(state, 'camera_index') && ~isempty(state.camera_index)
+		stereo.apply_camera_state(state.camera_index);
+	end
+
 	gui.sliderdisp(gui.retr('pivlab_axis'));
 	import.update_stereo_import_controls();
 end

@@ -9,6 +9,9 @@ if size(filepath,1) >1
         handles.calib_rect_cam_label.String = 'Current camera: CAMERA 2';
         gui.put('current_cam_nr',2);
     end
+    if gui.retr('stereomode') == 1
+        stereo.apply_camera_state(gui.retr('current_cam_nr'));
+    end
     gui.switchui('multip27')
 else
     gui.custom_msgbox('error',getappdata(0,'hgui'),'No PIV images','You need to load some PIV images first.','modal');

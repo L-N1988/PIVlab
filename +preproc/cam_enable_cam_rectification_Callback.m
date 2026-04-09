@@ -194,3 +194,6 @@ if handles.calib_userectification.Value == 1
 	gui.put('pointscali',[[topLeft_image(1) ; bottomRight_image(1)] [topLeft_image(2) ; bottomRight_image(2)]]);
 	calibrate.pixeldist_changed_Callback()
 end
+if gui.retr('stereomode') == 1
+    stereo.store_current_camera_state();
+end

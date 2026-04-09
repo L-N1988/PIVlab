@@ -20,6 +20,7 @@ session.calibration = struct();
 session.calibration.mono = cell(1, 2);
 session.calibration.stereo = [];
 session.calibration.mapping = [];
+session.calibration.coupled = stereo.default_coupled_calibration();
 
 session.twod = struct();
 session.twod.piv_settings = [];

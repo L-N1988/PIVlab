@@ -193,7 +193,16 @@ try
     elseif stereomode == 1
         stereo.init_gui_state();
     end
+    if exist('stereo_calibration','var')
+        gui.put('stereo_calibration',stereo_calibration);
+    elseif stereomode == 1
+        stereo.ensure_coupled_calibration();
+    end
     import.update_stereo_import_controls();
+    stereo.update_menu_state();
+    if stereomode == 1
+        stereo.apply_camera_state(stereo.get_current_camera_index());
+    end
 catch
     disp('couldnt set stereo GUI elements')
 end

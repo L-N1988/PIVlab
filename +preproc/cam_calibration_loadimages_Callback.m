@@ -12,4 +12,8 @@ if ~isempty(cam_selected_target_images)
 	pathfiles=fullfile(location,cam_selected_target_images);
 	gui.put('cam_selected_target_images',pathfiles)
 	handles.calib_usecalibration.Value = 0;
+    gui.put('cam_use_calibration',0);
+    if gui.retr('stereomode') == 1
+        stereo.store_current_camera_state();
+    end
 end

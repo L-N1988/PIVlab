@@ -36,3 +36,20 @@ function test_validate_default_settings(testCase)
 testCase.verifyTrue(is_valid);
 testCase.verifyEmpty(issues);
 end
+
+function test_coupled_calibration_contract(testCase)
+coupled = stereo.default_coupled_calibration();
+
+testCase.verifyEqual(numel(coupled.cameras), 2);
+testCase.verifyEqual(coupled.current_cam_nr, 1);
+testCase.verifyFalse(coupled.summary.is_complete);
+
+state2 = stereo.default_camera_calibration_state(2);
+state2.cameraParams = struct('dummy', 1);
+coupled = stereo.set_camera_calibration_state(coupled, 2, state2);
+state2_out = stereo.get_camera_calibration_state(coupled, 2);
+
+testCase.verifyEqual(state2_out.camera_index, 2);
+testCase.verifyTrue(isfield(state2_out.cameraParams, 'dummy'));
+testCase.verifyEqual(coupled.summary.num_calibrated_cameras, 1);
+end

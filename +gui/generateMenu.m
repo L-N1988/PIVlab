@@ -25,11 +25,11 @@ m5 = uimenu(MainWindow,'Label','Image settings');
 m5_1=uimenu(m5,'Label','Camera calibration (lens / distortion)');
 uimenu(m5_1,'Label','Setup / define / generate marker board','Callback',@preproc.cam_marker_setup_Callback);
 m5_2=uimenu(m5_1,'Label','Camera calibration (undistortion)');
-uimenu(m5_2,'Label','Camera 1','Callback',@preproc.cam_calibration_Callback);
-uimenu(m5_2,'Label','Camera 2','Callback',@preproc.cam_calibration_Callback,'enable','off');
+uimenu(m5_2,'Label','Camera 1','Callback',@preproc.cam_calibration_Callback,'Tag','menu_cam_calib_1');
+uimenu(m5_2,'Label','Camera 2','Callback',@preproc.cam_calibration_Callback,'enable','off','Tag','menu_cam_calib_2');
 m5_3=uimenu(m5_1,'Label','Image rectification / alignment');
-uimenu(m5_3,'Label','Camera 1','Callback',@preproc.cam_rectification_Callback);
-uimenu(m5_3,'Label','Camera 2','Callback',@preproc.cam_rectification_Callback,'enable','off');
+uimenu(m5_3,'Label','Camera 1','Callback',@preproc.cam_rectification_Callback,'Tag','menu_cam_rect_1');
+uimenu(m5_3,'Label','Camera 2','Callback',@preproc.cam_rectification_Callback,'enable','off','Tag','menu_cam_rect_2');
 uimenu(m5,'Label','Image pre-processing / enhancement','Callback',@preproc.Uielement_Callback,'Accelerator','I');
 
 uimenu(m5,'Label','Define region of interest (ROI)','Callback',@roi.img_ROI_Callback,'Accelerator','E');
@@ -72,6 +72,7 @@ uimenu(m13,'Label','Website','Callback',@misc.Website_Callback);
 uimenu(m13,'Label','How to cite PIVlab','Callback',@misc.howtocite_Callback);
 menuhandles = findall(getappdata(0,'hgui'),'type','uimenu'); %das soll gemacht werden laut Hilfe
 set(menuhandles,'HandleVisibility','off');
+stereo.update_menu_state();
 disp('-> Menu generated.')
 
 function load_images_dummy(~,~,~) % dummy function that performs two callbacks for loading images.

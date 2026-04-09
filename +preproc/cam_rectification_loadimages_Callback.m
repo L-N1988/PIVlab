@@ -12,5 +12,9 @@ if ~isempty(cam_selected_target_images)
     pathfiles=fullfile(location,cam_selected_target_images);
     gui.put('cam_selected_rectification_image',pathfiles)
     handles.calib_userectification.Value = 0;
+    gui.put('cam_use_rectification',0);
+    if gui.retr('stereomode') == 1
+        stereo.store_current_camera_state();
+    end
     image(imread(pathfiles),'Parent',gui.retr('pivlab_axis'));axis image;
 end

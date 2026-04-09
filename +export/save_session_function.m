@@ -137,6 +137,11 @@ calib_upscale=handles.calib_upscale.Value;
 %%stereoPIV
 stereomode=gui.retr('stereomode');
 stereo_session=gui.retr('stereo_session');
+if ~isempty(stereomode) && stereomode == 1
+    stereo_calibration = stereo.store_current_camera_state(stereo.get_current_camera_index());
+else
+    stereo_calibration = gui.retr('stereo_calibration');
+end
 
 
 clear handles

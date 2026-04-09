@@ -121,4 +121,7 @@ else
     end
 end
 gui.toolsavailable(1);
+if gui.retr('stereomode') == 1
+    stereo.store_current_camera_state();
+end
 gui.sliderdisp(gui.retr('pivlab_axis'));

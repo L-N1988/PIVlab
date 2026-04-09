@@ -171,6 +171,9 @@ if ~isempty(cam_selected_target_images)
         gui.put('cam_use_tilted_model', use_tilted_model);
         gui.put('cam_tilted_D',   stats.D_full);
         gui.put('cam_K_opencv',   stats.K_opencv);
+        if gui.retr('stereomode') == 1
+            stereo.store_current_camera_state();
+        end
 
         imshow(imread(imageFileNames{1}),'Parent',gui.retr('pivlab_axis'));
         hold on;
