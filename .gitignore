@@ -1,5 +1,7 @@
 
+refs
 *.asv
+/refs/files/*
 
 /.git/
 
