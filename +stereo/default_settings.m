@@ -37,6 +37,14 @@ settings.disparity = struct();
 settings.disparity.enable = false;
 settings.disparity.model = 'affine';
 settings.disparity.max_iterations = 2;
+settings.disparity.window_size = 128;
+settings.disparity.overlap = 0.5;
+settings.disparity.step = 64;
+settings.disparity.search_radius = 24;
+settings.disparity.min_correlation = 0.25;
+settings.disparity.min_valid_vectors = 6;
+settings.disparity.max_samples = inf;
+settings.disparity.min_patch_std = 1e-6;
 
 settings.reconstruction = struct();
 settings.reconstruction.method = 'pinhole-least-squares';
