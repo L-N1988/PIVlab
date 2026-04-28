@@ -10,7 +10,7 @@ coupled.cameras(2) = stereo.default_camera_calibration_state(2);
 
 coupled.stereo = struct();
 coupled.stereo.status = 'not_estimated';
-coupled.stereo.mapping = [];
+coupled.stereo.mapping = stereo.default_stereo_mapping();
 coupled.stereo.disparity_model = [];
 coupled.stereo.notes = {};
 

@@ -5,6 +5,19 @@ target = preproc.cam_get_target_definition(handles);
 cam_selected_target_images = gui.retr('cam_selected_target_images');
 
 try
+	% For custom3d without pre-loaded imagePoints, offer manual annotation
+	if strcmp(target.type, 'custom3d') ...
+			&& (~isfield(target.customPlate, 'hasImagePoints') || ~target.customPlate.hasImagePoints)
+		if isempty(cam_selected_target_images) || ~iscell(cam_selected_target_images)
+			gui.custom_msgbox('error', getappdata(0,'hgui'), 'Error', ...
+				'Load calibration images first, then annotate the plate points.', 'modal');
+			return
+		end
+		preproc.cam_manual_annotate_Callback();
+		% Re-fetch target with updated plate definition
+		target = preproc.cam_get_target_definition(handles);
+	end
+
 	validate_target_inputs(target, cam_selected_target_images);
 	[imagePoints, worldPoints, imageFileNames, imageSize, detectionSummary] = ...
 		collect_calibration_observations(target, cam_selected_target_images, handles);
@@ -75,8 +88,8 @@ switch target.type
 		end
 		if ~isfield(target.customPlate, 'hasImagePoints') || ~target.customPlate.hasImagePoints
 			error('PIVlab:MissingCustomPlateImagePoints', ...
-				['Custom 3D plate calibration requires imported imagePoints aligned with worldPoints. ' ...
-				'Provide them in the MAT file as an Nx2xM array.']);
+				['Custom 3D plate calibration requires annotated imagePoints. ' ...
+				'Use the manual annotation tool to mark points on the calibration image.']);
 		end
 	otherwise
 		error('PIVlab:UnsupportedBoardType', 'Unsupported board type.');
@@ -223,6 +236,12 @@ end
 function [imagePoints, worldPoints, imageFileNames, imageSize] = collect_custom_plate_observations(target, image_files)
 plate = target.customPlate;
 imagePoints = plate.imagePoints;
+% Normalise single-image N×2 to N×2×1 required by the estimation pipeline
+if ismatrix(imagePoints) && size(imagePoints, 2) == 2
+    ip_norm = zeros(size(imagePoints, 1), 2, 1);
+    ip_norm(:, :, 1) = imagePoints;
+    imagePoints = ip_norm;
+end
 worldPoints = plate.worldPoints;
 imageFileNames = plate.imageFileNames;
 imageSize = plate.imageSize;

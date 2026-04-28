@@ -16,6 +16,9 @@ gui.put('cam_selected_rectification_image', state.cam_selected_rectification_ima
 gui.put('rectification_tform', state.rectification_tform);
 gui.put('cam_use_calibration', state.cam_use_calibration);
 gui.put('cam_use_rectification', state.cam_use_rectification);
+% Restore manual annotation data for this camera
+gui.put('cam_manual_image_points', state.manual_image_points);
+gui.put('cam_manual_image_file',   state.manual_image_file);
 
 handles = gui.gethand;
 if isfield(handles, 'calib_usecalibration') && isgraphics(handles.calib_usecalibration)

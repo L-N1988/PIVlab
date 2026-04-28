@@ -15,5 +15,7 @@ state.cam_selected_rectification_image = [];
 state.rectification_tform = [];
 state.cam_use_calibration = 0;
 state.cam_use_rectification = 0;
+state.manual_image_points = [];
+state.manual_image_file = '';
 state.last_updated = [];
 end
