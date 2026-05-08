@@ -19,8 +19,9 @@ if isempty(imagePoints)
 	return
 end
 
-imshow(imread(cam_selected_rectification_image),'Parent',gui.retr('pivlab_axis'))
-hold on
-plot(imagePoints(:,1),imagePoints(:,2),'yo','MarkerFaceColor','y','Markersize',10)
-plot(imagePoints(:,1),imagePoints(:,2),'rx','MarkerSize',20,'LineWidth',2)
-hold off
+ax = gui.retr('pivlab_axis');
+imshow(imread(cam_selected_rectification_image),'Parent',ax)
+hold(ax,'on')
+plot(ax,imagePoints(:,1),imagePoints(:,2),'yo','MarkerFaceColor','y','Markersize',10)
+plot(ax,imagePoints(:,1),imagePoints(:,2),'rx','MarkerSize',20,'LineWidth',2)
+hold(ax,'off')

@@ -1,4 +1,5 @@
 function veclick(~,src)
+target_axis=gui.retr('pivlab_axis');
 if src.Button == 1
 	%only active if vectors are displayed.
 	handles=gui.gethand;
@@ -10,8 +11,7 @@ if src.Button == 1
 	y=resultslist{2,(currentframe+1)/2};
 
 	[x_cal,y_cal]=calibrate.xy (x,y);
-
-	pos=get(gca,'CurrentPoint');
+	pos=get(target_axis,'CurrentPoint');
 
 	xposition=round(pos(1,1));
 	yposition=round(pos(1,2));
@@ -48,7 +48,7 @@ if src.Button == 1
 	end
 
 	if typevector(info(1,1),info(1,2)) ~=0
-		delete(findobj('tag', 'infopoint'));
+		delete(findobj(target_axis,'tag', 'infopoint'));
 		%here, the calibration matters...
 		if (gui.retr('calu')==1 || gui.retr('calu')==-1) && gui.retr('calxy')==1%not calibrated
 			set(handles.u_cp, 'String', ['u:' num2str(round((u(info(1,1),info(1,2))*gui.retr('calu')-gui.retr('subtr_u'))*100000)/100000) ' px/fr']);
@@ -121,7 +121,7 @@ if src.Button == 1
 			set(handles.scalar_cp, 'String','N/A');
 		end
 
-		hold on;
+		hold(target_axis,'on');
 
 		try
 			magnitude_px=((u(info(1,1),info(1,2))).^2+(v(info(1,1),info(1,2))).^2).^0.5;
@@ -130,17 +130,17 @@ if src.Button == 1
 			magnitude_m = sprintf('%0.2g',magnitude_m);
 			if ~handles.multip29.Visible
 				if (gui.retr('calu')==1 || gui.retr('calu')==-1) && gui.retr('calxy')==1%not calibrated
-					text(x(info(1,1),info(1,2)),y(info(1,1),info(1,2)),[' ' magnitude_px ' px/fr'], 'tag', 'infopoint','Color','w','HorizontalAlignment','left','VerticalAlignment','middle','Margin',0.01,'BackgroundColor','k','FontSize',10)
+					text(target_axis,x(info(1,1),info(1,2)),y(info(1,1),info(1,2)),[' ' magnitude_px ' px/fr'], 'tag', 'infopoint','Color','w','HorizontalAlignment','left','VerticalAlignment','middle','Margin',0.01,'BackgroundColor','k','FontSize',10)
 				else
-					text(x(info(1,1),info(1,2)),y(info(1,1),info(1,2)),[' ' magnitude_px ' px/fr\newline ' magnitude_m ' m/' time_unit], 'tag', 'infopoint','Color','w','HorizontalAlignment','left','VerticalAlignment','middle','Margin',0.01,'BackgroundColor','k')
+					text(target_axis,x(info(1,1),info(1,2)),y(info(1,1),info(1,2)),[' ' magnitude_px ' px/fr\newline ' magnitude_m ' m/' time_unit], 'tag', 'infopoint','Color','w','HorizontalAlignment','left','VerticalAlignment','middle','Margin',0.01,'BackgroundColor','k')
 				end
 			end
 		catch ME
 			disp('could not plot point info')
 			disp (ME.message)
 		end
-		plot(x(info(1,1),info(1,2)),y(info(1,1),info(1,2)), 'y.', 'tag', 'infopoint','linewidth', 1.5, 'markersize', 20);
-		hold off;
+		plot(target_axis,x(info(1,1),info(1,2)),y(info(1,1),info(1,2)), 'y.', 'tag', 'infopoint','linewidth', 1.5, 'markersize', 20);
+		hold(target_axis,'off');
 		%% plot correlation matrices if the corresponding panel is visible
 		if handles.multip29.Visible
 			correlation_matrices_data = gui.retr('correlation_matrices_data');
@@ -171,7 +171,7 @@ if src.Button == 1
 				% find the corresponding correlation amtrices of the first passes
 				%info(1,2) %x koordinate
 				for pass = 1 : correlation_matrices_data.passes
-					nexttile
+					axh=nexttile;
 					x_pass=correlation_matrices_data.all_xy_tables{pass,1};
 					y_pass=correlation_matrices_data.all_xy_tables{pass,2};
 					findx=abs(x_pass/x(info(1,1),info(1,2))-1);
@@ -181,20 +181,20 @@ if src.Button == 1
 					pass_info(1,1)=imagey(1,1);
 					pass_info(1,2)=imagex(1,1);
 					idx_to_plot = sub2ind(size(correlation_matrices_data.all_xy_tables{pass,1}),pass_info(1),pass_info(2));
-					surf(correlation_matrices_data.correlation_matrices{pass}(:,:,idx_to_plot));
-					shading flat;
-					view(0, 90);
+					imagesc(correlation_matrices_data.correlation_matrices{pass}(:,:,idx_to_plot));
+					%shading flat;
+					%view(0, 90);
 					axis tight;
-					set(gca, 'DataAspectRatio', [1 1 diff(zlim)/min(diff(xlim),diff(ylim))]);
-					set(gca, 'YDir', 'reverse');
+					set(axh, 'DataAspectRatio', [1 1 1]);
+					set(axh, 'YDir', 'reverse');
 					title(['Pass nr. ' num2str(pass) ' (' num2str(size(correlation_matrices_data.correlation_matrices{pass},2)) 'x' num2str(size(correlation_matrices_data.correlation_matrices{pass},1)) ')'])
 				end
-				rotate3d(fig,'on');
+				%rotate3d(fig,'on');
 			else
 				gui.custom_msgbox('error',getappdata(0,'hgui'),'Outdated','Correlation matrices need to be retrieved first.','modal');
 			end
 		end
 	end
 else %right or middle button
-	delete(findobj('tag', 'infopoint'));
+	delete(findobj(target_axis,'tag', 'infopoint'));
 end

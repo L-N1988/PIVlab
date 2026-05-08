@@ -299,20 +299,22 @@ if isempty(used_index)
 end
 
 if ~isempty(imageFileNames) && numel(imageFileNames) >= used_index && exist(imageFileNames{used_index}, 'file')
-	imshow(imread(imageFileNames{used_index}),'Parent',gui.retr('pivlab_axis'));
-	hold on;
-	plot(imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
-	plot(stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
-	legend('Detected Points','ReprojectedPoints');
-	hold off;
+	ax = gui.retr('pivlab_axis');
+	imshow(imread(imageFileNames{used_index}),'Parent',ax);
+	hold(ax,'on');
+	plot(ax,imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
+	plot(ax,stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
+	legend(ax,'Detected Points','ReprojectedPoints');
+	hold(ax,'off');
 else
-	cla(gui.retr('pivlab_axis'));
-	axes(gui.retr('pivlab_axis')); %#ok<LAXES>
-	plot(imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
-	hold on;
-	plot(stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
-	legend('Detected Points','ReprojectedPoints');
-	hold off;
+	ax = gui.retr('pivlab_axis');
+	cla(ax);
+	axes(ax); %#ok<LAXES>
+	plot(ax,imagePoints(:,1,used_index), imagePoints(:,2,used_index),'go');
+	hold(ax,'on');
+	plot(ax,stats.ReprojectedPoints(:,1,used_index),stats.ReprojectedPoints(:,2,used_index),'r+');
+	legend(ax,'Detected Points','ReprojectedPoints');
+	hold(ax,'off');
 end
 end
 

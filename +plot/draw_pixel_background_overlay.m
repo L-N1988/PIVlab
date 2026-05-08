@@ -28,15 +28,15 @@ elseif image_display_type==3 %white
 end
 %disp(['Size of the image currently being display via sliderdisp: ' num2str(size(currentimage))])
 
-colormap('gray');
-axis image
+colormap(target_axis,'gray');
+axis(target_axis,'image');
 
 derived=gui.retr('derived');
 
 if size(derived,2)>=(currentframe+1)/2 && displaywhat > 1 && numel(derived{displaywhat-1,(currentframe+1)/2})>0 %derived parameters requested and existant
 else
 	if get(handles.derivchoice,'Value')>1
-		text(15,15,'This parameter needs to be calculated for this frame first. Go to Plot -> Spatial: Derive Parameters and click "Apply to all frames".','color','r','fontsize',9, 'BackgroundColor', 'k', 'tag', 'derivhint')
+		text(target_axis,15,15,'This parameter needs to be calculated for this frame first. Go to Plot -> Spatial: Derive Parameters and click "Apply to all frames".','color','r','fontsize',9, 'BackgroundColor', 'k', 'tag', 'derivhint')
 	end
 end
 
@@ -72,35 +72,36 @@ if ~isempty(derived) && size(derived,2)>=(currentframe+1)/2 && displaywhat > 1  
 	end
 
 	%set colormap
+	target_fig = ancestor(target_axis,'figure');
     if displaywhat ~=10 %10 is LIC
         avail_maps=get(handles.colormap_choice,'string');
         selected_index=get(handles.colormap_choice,'value');
         if selected_index == 4 %HochschuleBremen map
             try
                 load(fullfile('+plot','hsbmap.mat'),'hsb');
-                MAP = colormap(hsb);
+                MAP = colormap(target_fig,hsb);
             catch
                 disp(['hsbmap.mat not found in ' fullfile('+plot','hsbmap.mat')])
-                MAP=colormap("parula");
+                MAP=colormap(target_fig,"parula");
             end
         elseif selected_index== 1 %parula
             try
                 load(fullfile('+plot','parula.mat'),'parula')
-                MAP = colormap (parula);
+                MAP = colormap(target_fig,parula);
             catch
                 disp(['parula.mat not found in ' fullfile('+plot','parula.mat')])
-                MAP=colormap("parula");
+                MAP=colormap(target_fig,"parula");
             end
         elseif selected_index== 16 %plasma
             try
                 load(fullfile('+plot','plasma.mat'),'plasma')
-                MAP = colormap (plasma);
+                MAP = colormap(target_fig,plasma);
             catch
                 disp(['plasma.mat not found in ' fullfile('+plot','plasma.mat')])
-                MAP=colormap("parula");
+                MAP=colormap(target_fig,"parula");
             end
         else
-            MAP = colormap(avail_maps{selected_index});
+            MAP = colormap(target_fig,avail_maps{selected_index});
         end
         %adjust colormap steps
         cmap = MAP;
@@ -108,10 +109,9 @@ if ~isempty(derived) && size(derived,2)>=(currentframe+1)/2 && displaywhat > 1  
         colormap_steps_value=get(handles.colormap_steps,'Value');
         colormap_steps=str2double(colormap_steps_list{colormap_steps_value});
         cmap_new=interp1(1:size(cmap,1),cmap,linspace(1,size(cmap,1),colormap_steps));
-        %colormap(cmap_new);
-        MAP = colormap(cmap_new);
+        MAP = colormap(target_fig,cmap_new);
     else %LIC can only be gray
-        MAP = colormap('gray');
+        MAP = colormap(target_fig,'gray');
     end
 
 	currentimage = plot.rescale_maps(currentimage,is_it_vector_direction);
@@ -169,7 +169,7 @@ if ~isempty(derived) && size(derived,2)>=(currentframe+1)/2 && displaywhat > 1  
 	else
 		alpha_ROI_map(:)=1;
 	end
-	hold on;
+	hold(target_axis,'on');
 	alphamap=derivative_alpha.*alpha_pixel_map.*alpha_ROI_map;
 	alphamap(alphamap>1)=1;
 	alphamap(alphamap<0)=0;
@@ -177,9 +177,20 @@ if ~isempty(derived) && size(derived,2)>=(currentframe+1)/2 && displaywhat > 1  
 	alphamap(1,1)=0;
 	alphamap(end,end)=1;
 	image(currentimage, 'parent',target_axis, 'cdatamapping', 'direct','AlphaData',alphamap,'AlphaDataMapping','scaled');
-	hold off;
+	hold(target_axis,'off');
 
 	%% colorbar
+	% Second-monitor housekeeping: when no colorbar is shown, make sure the
+	% axis fills the figure edge-to-edge (restores from a previous colorbar run).
+	% This check is intentionally outside the colorbar block so it also executes
+	% in the no-colorbar case without adding any rendering work.
+	sm_ax_ref = gui.retr('second_monitor_axis');
+	is_second_mon = ~isempty(sm_ax_ref) && isequal(target_axis, sm_ax_ref);
+	if is_second_mon && get(handles.colorbarpos,'value') == 1
+		set(target_axis, 'Units', 'normalized', 'OuterPosition', [0 0 1 1]);
+		set(target_axis, 'LooseInset', [0 0 0 0]);
+	end
+
 	if get(handles.colorbarpos,'value')~=1
 		name=get(handles.derivchoice,'string');
 		if strcmp(name,'N/A') %user hasn't visited the derived panel before
@@ -254,7 +265,7 @@ if 	render_mask==1 && get(handles.mask_edit_mode,'Value')==2 %mask preview mode
 	if skip_mask_pixels<1
 		skip_mask_pixels=1;
 	end
-	hold on;
+	hold(target_axis,'on');
 	alphamapmask=converted_mask(1:skip_mask_pixels:end,1:skip_mask_pixels:end)*(1-(str2double(get(handles.masktransp,'String'))/100));
 	alphamapmask(alphamapmask>1)=1;
 	alphamapmask(alphamapmask<0)=0;
@@ -262,6 +273,6 @@ if 	render_mask==1 && get(handles.mask_edit_mode,'Value')==2 %mask preview mode
 	alphamapmask(1,1)=0;
 	alphamapmask(end,end)=1;
 	image(x,y,cat(3, converted_mask(1:skip_mask_pixels:end,1:skip_mask_pixels:end)*0.7, converted_mask(1:skip_mask_pixels:end,1:skip_mask_pixels:end)*0.1, converted_mask(1:skip_mask_pixels:end,1:skip_mask_pixels:end)*0.1), 'parent',target_axis, 'cdatamapping', 'direct','AlphaData',alphamapmask,'AlphaDataMapping','scaled');
-	hold off
+	hold(target_axis,'off');
 end
 

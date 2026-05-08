@@ -808,13 +808,13 @@ item=[parentitem(3)/3*2 item(2) parentitem(3)/4*1 1];
 handles.text128 = uicontrol(handles.uipanel42,'Style','text', 'String','16','Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','text128');
 
 item=[0 item(2)+item(4)+margin/2 parentitem(3) 1.1];
-handles.repeat_last= uicontrol(handles.uipanel42,'Style','checkbox', 'String','Repeat last pass until','Value',0,'Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Callback',@piv.repeat_last_Callback,'Tag','repeat_last','TooltipString','This will repeat the last pass of a multipass analysis until the average difference to the previous pass is less than "quality slope".');
+handles.repeat_last= uicontrol(handles.uipanel42,'Style','checkbox', 'String','Repeat last pass until','Value',0,'Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Callback',@piv.repeat_last_Callback,'Tag','repeat_last','TooltipString','This will repeat the last pass of a multipass analysis until the average difference to the previous pass is less than "quality slope".','visible','off');
 
 item=[0 item(2)+item(4) parentitem(3)/2 1];
-handles.text128x = uicontrol(handles.uipanel42,'Style','text', 'String','quality slope <','Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','text128x');
+handles.text128x = uicontrol(handles.uipanel42,'Style','text', 'String','quality slope <','Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','text128x','visible','off');
 
 item=[parentitem(3)/2 item(2) parentitem(3)/3.5 1];
-handles.edit52x = uicontrol(handles.uipanel42,'Style','edit', 'String','0.025','Units','characters','enable','off', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Callback',@piv.repeated_thesh_Callback,'Tag','edit52x','TooltipString','This will repeat the last pass of a multipass analysis until the average difference to the previous pass is less than "quality slope".');
+handles.edit52x = uicontrol(handles.uipanel42,'Style','edit', 'String','0.025','Units','characters','enable','off', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Callback',@piv.repeated_thesh_Callback,'Tag','edit52x','TooltipString','This will repeat the last pass of a multipass analysis until the average difference to the previous pass is less than "quality slope".','visible','off');
 
 parentitem=get(handles.multip04, 'Position');
 item=[0 0 0 0];
@@ -963,6 +963,38 @@ handles.restore_all = uicontrol(handles.multip06,'Style','pushbutton','String','
 
 item=[0 item(2)+item(4)+margin/2 parentitem(3) 1];
 handles.amount_nans = uicontrol(handles.multip06,'Style','text','String','VDP: 100 %','HorizontalAlignment','center','Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','amount_nans','TooltipString','Valid detection probability in percent');
+
+% Vector color legend: colored swatches showing the three vector types.
+% Valid and interpolated colors mirror "Modify plot appearance" settings and
+% are updated dynamically in validate.count_discarded_data.
+swatch_w = 3; swatch_gap = 0.3;
+swatch_x = margin;
+label_x  = swatch_x + swatch_w + swatch_gap;
+label_w  = parentitem(3) - margin*2 - swatch_w - swatch_gap;
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+handles.veccolor_valid_swatch = uicontrol(handles.multip06,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'Tag','veccolor_valid_swatch','BackgroundColor',[0 1 0], ...
+    'TooltipString','Valid vector color — configurable in ''Modify plot appearance''');
+uicontrol(handles.multip06,'Style','text','String','Valid vectors','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+handles.veccolor_interp_swatch = uicontrol(handles.multip06,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'Tag','veccolor_interp_swatch','BackgroundColor',[1 0.5 0], ...
+    'TooltipString','Rejected/interpolated vector color — configurable in ''Modify plot appearance''');
+uicontrol(handles.multip06,'Style','text','String','Rejected / interpolated','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+uicontrol(handles.multip06,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'BackgroundColor',[0 0.8 1], ...
+    'TooltipString','2nd-peak substituted vector color (fixed cyan — not user-configurable)');
+uicontrol(handles.multip06,'Style','text','String','2nd-peak substituted','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
 
 %% Multip07
 handles.multip07 = uipanel(MainWindow, 'Units','characters', 'Position', [0+margin Figure_Size(4)-panelheightpanels-margin panelwidth panelheightpanels],'title','Calibration (CTRL+Z)', 'Tag','multip07','fontweight','bold');
@@ -2045,6 +2077,37 @@ handles.restore_all = uicontrol(handles.multip23,'Style','pushbutton','String','
 
 item=[0 item(2)+item(4)+margin/2 parentitem(3) 1];
 handles.amount_nans = uicontrol(handles.multip23,'Style','text','String','Filtered data: 0 %','HorizontalAlignment','center','Units','characters', 'Fontunits','points','Position',[item(1)+margin parentitem(4)-item(4)-margin-item(2) item(3)-margin*2 item(4)],'Tag','amount_nans');
+
+% Vector color legend — mirrors the one in the Vector validation panel.
+% Swatch colors are updated dynamically in validate.count_discarded_data.
+swatch_w = 3; swatch_gap = 0.3;
+swatch_x = margin;
+label_x  = swatch_x + swatch_w + swatch_gap;
+label_w  = parentitem(3) - margin*2 - swatch_w - swatch_gap;
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+handles.veccolor_valid_swatch2 = uicontrol(handles.multip23,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'Tag','veccolor_valid_swatch2','BackgroundColor',[0 1 0], ...
+    'TooltipString','Valid vector color — configurable in ''Modify plot appearance''');
+uicontrol(handles.multip23,'Style','text','String','Valid vectors','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+handles.veccolor_interp_swatch2 = uicontrol(handles.multip23,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'Tag','veccolor_interp_swatch2','BackgroundColor',[1 0.5 0], ...
+    'TooltipString','Rejected/interpolated vector color — configurable in ''Modify plot appearance''');
+uicontrol(handles.multip23,'Style','text','String','Rejected / interpolated','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
+
+item=[0 item(2)+item(4)+margin/4 parentitem(3) 1.0];
+uicontrol(handles.multip23,'Style','text','String','','Units','characters', ...
+    'Position',[swatch_x parentitem(4)-item(4)-margin-item(2) swatch_w item(4)], ...
+    'BackgroundColor',[0 0.8 1], ...
+    'TooltipString','2nd-peak substituted vector color (fixed cyan — not user-configurable)');
+uicontrol(handles.multip23,'Style','text','String','2nd-peak substituted','HorizontalAlignment','left', ...
+    'Units','characters','Position',[label_x parentitem(4)-item(4)-margin-item(2) label_w item(4)]);
 
 %% Multip24
 % General
